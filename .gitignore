@@ -33,4 +33,11 @@ ENV/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Конфиденциальные файлы
+.env
+*.db
+*.sqlite
+*.sqlite3
+config.py 
