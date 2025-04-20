@@ -1,5 +1,5 @@
 import aiosqlite
-from config import DATABASE_PATH
+from src.config import DATABASE_PATH
 from datetime import datetime
 
 # =============================================

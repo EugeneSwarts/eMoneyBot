@@ -20,8 +20,8 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Путь к файлу базы данных SQLite
-# База данных будет создана в корневой директории проекта
-DATABASE_PATH = "bot_database.db"
+# База данных будет создана в директории data
+DATABASE_PATH = os.path.join("data", "bot_database.db")
 
 # =============================================
 # Настройки системы логирования

@@ -18,67 +18,11 @@ from pytz import timezone
 # =============================================
 # Локальные модули
 # =============================================
-from config import (
-    LOG_FORMAT, LOG_DATE_FORMAT, LOG_LEVEL,
-    LOG_USER_ACTION, bot, dp
-)
-
-from database import (
-    add_user,
-    create_question,
-    create_review,
-    get_user,
-    get_user_questions,
-    get_user_reviews,
-    init_db
-)
-
-from keyboards import (
-    get_back_keyboard,
-    get_filter_type_keyboard,
-    get_history_type_keyboard,
-    get_main_keyboard,
-    get_pagination_keyboard,
-    get_review_options_keyboard,
-    get_sort_type_keyboard,
-    get_star_rating_keyboard
-)
-
-from messages import (
-    BANNED_USER_ERROR,
-    BUTTON_BACK,
-    ERROR_TEXT,
-    GREETING_DAY,
-    GREETING_EVENING,
-    GREETING_MORNING,
-    GREETING_NIGHT,
-    HISTORY_CHOOSE_FILTER_TEXT,
-    HISTORY_CHOOSE_SORT_TEXT,
-    HISTORY_CHOOSE_TYPE_TEXT,
-    HISTORY_NO_QUESTIONS_TEXT,
-    HISTORY_NO_REVIEWS_TEXT,
-    HISTORY_QUESTIONS_HEADER,
-    HISTORY_REVIEWS_HEADER,
-    HISTORY_TYPE_NAMES,
-    MAIN_MENU_TEXT,
-    QUESTION_START_TEXT,
-    REVIEW_START_TEXT,
-    SUCCESS_QUESTION_TEXT,
-    SUCCESS_RATING_TEXT,
-    SUCCESS_REVIEW_TEXT,
-    get_review_rating_text
-)
-
-from utils import (
-    check_review_limit,
-    check_user_ban,
-    delete_last_messages,
-    format_question,
-    format_review,
-    handle_text_message,
-    safe_edit_message,
-    split_items_into_pages
-)
+from src.config import *
+from src.database import *
+from src.utils import *
+from src.keyboards import *
+from src.messages import *
 
 # =============================================
 # Настройка системы логирования

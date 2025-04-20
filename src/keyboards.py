@@ -2,11 +2,11 @@
 # Импорт необходимых библиотек
 # =============================================
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from messages import (
+from src.messages import (
     BUTTON_BACK, BUTTON_SHOW_ALL, BUTTON_WITH_RESPONSES,
     BUTTON_SORT_NEW, BUTTON_SORT_OLD, BUTTON_PAGE_INFO, BUTTON_NEXT
 )
-from database import has_questions_with_responses, has_reviews_with_responses
+from src.database import has_questions_with_responses, has_reviews_with_responses
 
 # =============================================
 # Основная клавиатура
