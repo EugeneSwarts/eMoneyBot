@@ -22,7 +22,7 @@ Telegram-бот для управления отзывами и вопросам
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/yourusername/eMoneyBot.git
+git clone https://github.com/EugeneSwarts/eMoneyBot
 cd eMoneyBot
 ```
 
