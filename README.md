@@ -41,6 +41,113 @@ BOT_TOKEN=your_bot_token_here
 python main.py
 ```
 
+## 🐧 Установка на Linux сервер
+
+### Ubuntu/Debian
+
+1. Обновите систему и установите необходимые пакеты:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-pip git
+```
+
+2. Клонируйте репозиторий:
+```bash
+git clone https://github.com/EugeneSwarts/eMoneyBot
+cd eMoneyBot
+```
+
+3. Установите зависимости:
+```bash
+pip3 install -r requirements.txt
+```
+
+4. Создайте файл `.env` и добавьте токен бота:
+```bash
+echo "BOT_TOKEN=your_bot_token_here" > .env
+```
+
+5. Запустите бота:
+```bash
+python3 main.py
+```
+
+### CentOS/RHEL
+
+1. Обновите систему и установите необходимые пакеты:
+```bash
+sudo yum update -y
+sudo yum install -y python3 python3-pip git
+```
+
+2. Клонируйте репозиторий:
+```bash
+git clone https://github.com/EugeneSwarts/eMoneyBot
+cd eMoneyBot
+```
+
+3. Установите зависимости:
+```bash
+pip3 install -r requirements.txt
+```
+
+4. Создайте файл `.env` и добавьте токен бота:
+```bash
+echo "BOT_TOKEN=your_bot_token_here" > .env
+```
+
+5. Запустите бота:
+```bash
+python3 main.py
+```
+
+### Arch Linux
+
+1. Обновите систему и установите необходимые пакеты:
+```bash
+sudo pacman -Syu --noconfirm
+sudo pacman -S --noconfirm python python-pip git
+```
+
+2. Клонируйте репозиторий:
+```bash
+git clone https://github.com/EugeneSwarts/eMoneyBot
+cd eMoneyBot
+```
+
+3. Установите зависимости:
+```bash
+pip install -r requirements.txt
+```
+
+4. Создайте файл `.env` и добавьте токен бота:
+```bash
+echo "BOT_TOKEN=your_bot_token_here" > .env
+```
+
+5. Запустите бота:
+```bash
+python main.py
+```
+
+### Запуск в фоновом режиме (для всех дистрибутивов)
+
+Для запуска бота в фоновом режиме можно использовать `nohup`:
+
+```bash
+nohup python3 main.py > bot.log 2>&1 &
+```
+
+Для проверки работы бота:
+```bash
+tail -f bot.log
+```
+
+Для остановки бота:
+```bash
+pkill -f "python3 main.py"
+```
+
 ## 📁 Структура проекта
 
 ```
@@ -76,4 +183,4 @@ MIT
 
 <div align="center">
   <sub>Создано с ❤️ для удобного взаимодействия с покупателями</sub>
-</div> 
+</div>
