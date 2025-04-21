@@ -132,20 +132,16 @@ HISTORY_QUESTIONS_HEADER = (
 # Форматы для отображения отзывов и вопросов
 # =============================================
 REVIEW_FORMAT = (
-    "\n📅 {date}\n"
-    "━━━━━━━━━━━━━━━━━━━━\n"
-    "⭐ Оценка: {rating}\n\n"
-    "💭 {review_text}\n"
-    "{admin_response}\n"
-    "━━━━━━━━━━━━━━━━━━━━\n"
+    "📅 {date}"
+    "\n\n🏅 Оценка: {rating}"
+    "{review_text}"
+    "{admin_response}"
 )
 
 QUESTION_FORMAT = (
-    "\n📅 {date}\n"
-    "━━━━━━━━━━━━━━━━━━━━\n"
-    "❓ {question_text}\n"
-    "{admin_response}\n" 
-    "━━━━━━━━━━━━━━━━━━━━\n"
+    "📅 {date}"
+    "\n\n❓ {question_text}"
+    "{admin_response}" 
 )
 
 # =============================================
@@ -185,4 +181,4 @@ HISTORY_TYPE_NAMES = {
 
 # Константы для пагинации
 MAX_CHARS_PER_PAGE = 300  # Максимальное количество символов на странице
-MAX_ITEMS_PER_PAGE = 5    # Максимальное количество элементов на странице 
+MAX_ITEMS_PER_PAGE = 1    # Максимальное количество элементов на странице 

@@ -1,10 +1,21 @@
+# =============================================
+# Стандартные библиотеки Python
+# =============================================
 import logging
 from datetime import datetime
 from typing import Optional, List, Callable, Dict, Any, Union
 
+# =============================================
+# Сторонние библиотеки
+# =============================================
+from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, Message
 from aiogram.exceptions import TelegramBadRequest
 
+# =============================================
+# Внутренние модули
+# =============================================
+from src.admin.main_admin import show_admin_menu
 from src.config import (
     LOG_MESSAGE_DELETE_ERROR,
     LOG_MESSAGE_EDIT_ERROR,
@@ -15,7 +26,9 @@ from src.database import get_user, can_leave_review_today
 from src.keyboards import get_main_keyboard
 from src.messages import MAX_CHARS_PER_PAGE, MAX_ITEMS_PER_PAGE, QUESTION_FORMAT, REVIEW_FORMAT, REVIEW_LIMIT_TEXT
 
-
+# =============================================
+# Управление сообщениями в чате
+# =============================================
 async def delete_last_messages(chat_id: int, message_id: int, count: int = 5) -> None:
     """
     Удаляет последние сообщения в чате.
@@ -65,7 +78,9 @@ async def safe_edit_message(
         if "message is not modified" not in str(e):
             logging.warning(LOG_MESSAGE_EDIT_ERROR.format(error=e))
 
-
+# =============================================
+# Проверки пользователей и прав доступа
+# =============================================
 async def check_user_ban(user_id: int) -> bool:
     """
     Проверяет, заблокирован ли пользователь.
@@ -108,6 +123,28 @@ async def check_review_limit(
     return True
 
 
+async def check_admin_rights(message: Union[Message, types.CallbackQuery]) -> bool:
+    """
+    Проверяет права администратора пользователя и выполняет перенаправление на админ-меню при необходимости.
+    
+    Args:
+        message (Union[Message, types.CallbackQuery]): Объект сообщения или callback query от пользователя
+        
+    Returns:
+        bool: True если пользователь администратор, False если нет
+    """
+    # Определяем ID пользователя в зависимости от типа входящего сообщения
+    user_id = message.chat.id if message.from_user.is_bot else message.from_user.id
+    user = await get_user(user_id)
+    
+    if user and user[2] > 0:  # user[2] - это поле admin_rights в базе данных
+        await show_admin_menu(message, user_id, message.from_user.is_bot)
+        return True
+    return False
+
+# =============================================
+# Обработка пользовательского ввода
+# =============================================
 async def handle_text_message(
     message: Message,
     state: Any,
@@ -171,7 +208,9 @@ async def handle_text_message(
         if user_ratings:
             user_ratings.pop(user_id, None)
 
-
+# =============================================
+# Форматирование данных
+# =============================================
 def format_datetime(datetime_str: str) -> str:
     """
     Форматирует строку с датой и временем.
@@ -198,9 +237,11 @@ def format_review(review: tuple) -> str:
         str: Отформатированный текст отзыва с датой, рейтингом и текстом
     """
     review_id, user_id, username, rating, review_text, admin_response, created_at = review
-    
+
+    # Форматируем отзыв
+    review_text = f"\n\n💭 Отзыв: {review_text}" if review_text else ""
     # Форматируем ответ администратора
-    admin_response_text = f"💬 Ответ администратора: {admin_response}" if admin_response else ""
+    admin_response_text = f"\n\n💬 Ответ администратора: {admin_response}" if admin_response else ""
     
     # Используем формат из messages.py
     return REVIEW_FORMAT.format(
@@ -225,7 +266,7 @@ def format_question(question: tuple) -> str:
     question_id, user_id, username, question_text, admin_response, created_at = question
     
     # Форматируем ответ администратора
-    admin_response_text = f"💬 Ответ администратора: {admin_response}" if admin_response else ""
+    admin_response_text = f"\n\n💬 Ответ администратора: {admin_response}" if admin_response else ""
     
     # Используем формат из messages.py
     return QUESTION_FORMAT.format(
@@ -234,7 +275,9 @@ def format_question(question: tuple) -> str:
         admin_response=admin_response_text
     )
 
-
+# =============================================
+# Пагинация и навигация
+# =============================================
 def split_items_into_pages(
     items: List[Any],
     format_func: Callable[[Any], str]
@@ -273,4 +316,4 @@ def split_items_into_pages(
     if current_page:
         pages.append(current_page)
     
-    return pages 
+    return pages

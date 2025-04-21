@@ -62,50 +62,72 @@ class HistoryStates(StatesGroup):
     waiting_for_sort_type = State()
 
 # =============================================
-# Обработчик команды /start
+# Обработчик главного меню
 # =============================================
+async def handle_main_menu(message: Union[types.Message, types.CallbackQuery], is_start: bool = False) -> None:
+    """
+    Общий обработчик для главного меню.
+    Используется как для команды /start, так и для кнопки "Назад".
+    
+    Args:
+        message (Union[types.Message, types.CallbackQuery]): Объект сообщения или callback
+        is_start (bool): True если это команда /start, False если возврат в меню
+    """
+    # Очищаем последние сообщения только для команды start
+    if is_start:
+        await delete_last_messages(message.chat.id, message.message_id)
+        
+        # Проверяем существование пользователя и регистрируем если его нет
+        user = await get_user(message.from_user.id)
+        if not user:
+            await add_user(message.from_user.id, message.from_user.username)
+            logger.info(f"Новый пользователь: {message.from_user.id} (@{message.from_user.username})")
+        
+        # Проверяем права администратора
+        if await check_admin_rights(message):
+            return
+
+    # Определяем текущее время суток для персонализированного приветствия
+    tyumen_tz = timezone('Asia/Yekaterinburg')
+    current_hour = datetime.now(tyumen_tz).hour
+    
+    # Выбираем подходящее приветствие в зависимости от времени суток
+    greeting = (
+        GREETING_NIGHT if 0 <= current_hour < 6 
+        else GREETING_MORNING if 6 <= current_hour < 12
+        else GREETING_DAY if 12 <= current_hour < 18
+        else GREETING_EVENING
+    )
+    
+    # Формируем текст приветственного сообщения
+    welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
+    
+    # Отправляем или редактируем сообщение в зависимости от типа вызова
+    if is_start:
+        await message.answer(welcome_text, reply_markup=get_main_keyboard())
+    else:
+        # Если это CallbackQuery, используем его message атрибут
+        message_to_edit = message.message if isinstance(message, types.CallbackQuery) else message
+        await safe_edit_message(message_to_edit, welcome_text, reply_markup=get_main_keyboard())
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """
     Обработчик команды /start.
-    Проверяет существование пользователя, при необходимости регистрирует нового,
-    и отправляет приветственное сообщение.
-    
-    Args:
-        message (types.Message): Объект сообщения от пользователя
     """
-    # Очищаем последние сообщения в чате
-    await delete_last_messages(message.chat.id, message.message_id)
+    await handle_main_menu(message, is_start=True)
 
-    # Проверяем существование пользователя и регистрируем если его нет
-    user = await get_user(message.from_user.id)
-    if not user:
-        await add_user(message.from_user.id, message.from_user.username)
-        logger.info(f"Новый пользователь: {message.from_user.id} (@{message.from_user.username})")
+@dp.callback_query(lambda c: c.data == "back_to_main")
+async def handle_back_to_main(callback: types.CallbackQuery, state: FSMContext):
+    """
+    Обработчик возврата в главное меню.
+    """
+    # Очищаем состояние и временные данные
+    await state.clear()
+    if callback.from_user.id in user_ratings:
+        del user_ratings[callback.from_user.id]
     
-    if user[2] == 1:
-        await show_admin_menu(message)
-    else:
-        # Определяем текущее время суток для персонализированного приветствия
-        tyumen_tz = timezone('Asia/Yekaterinburg')
-        current_hour = datetime.now(tyumen_tz).hour
-        
-        # Выбираем подходящее приветствие в зависимости от времени суток
-        greeting = (
-            GREETING_NIGHT if 0 <= current_hour < 6 
-            else GREETING_MORNING if 6 <= current_hour < 12
-            else GREETING_DAY if 12 <= current_hour < 18
-            else GREETING_EVENING
-        )
-        
-        # Формируем текст приветственного сообщения
-        welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
-        
-        # Отправляем приветственное сообщение с клавиатурой
-        await message.answer(
-            welcome_text,
-            reply_markup=get_main_keyboard()
-        )
+    await handle_main_menu(callback, is_start=False)
 
 # =============================================
 # Обработчик нажатий на кнопки
@@ -123,6 +145,10 @@ async def process_callback(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     username = callback.from_user.username or callback.from_user.first_name
     
+    # Проверяем права администратора
+    if await check_admin_rights(callback.message):
+        return
+
     # Проверяем блокировку пользователя только для создания отзывов и вопросов
     if callback.data in ["leave_review", "ask_question"]:
         if await check_user_ban(user_id):
@@ -331,28 +357,6 @@ async def process_callback(callback: types.CallbackQuery, state: FSMContext):
             callback.message,
             HISTORY_CHOOSE_FILTER_TEXT.format(history_type=HISTORY_TYPE_NAMES[history_type]),
             reply_markup=await get_filter_type_keyboard(history_type, user_id)
-        )
-    elif callback.data == "back_to_main":
-        # Возвращаемся в главное меню
-        await state.clear()
-        if user_id in user_ratings:
-            del user_ratings[user_id]
-        tyumen_tz = timezone('Asia/Yekaterinburg')
-        current_hour = datetime.now(tyumen_tz).hour
-        
-        greeting = (
-            GREETING_NIGHT if 0 <= current_hour < 6 
-            else GREETING_MORNING if 6 <= current_hour < 12
-            else GREETING_DAY if 12 <= current_hour < 18
-            else GREETING_EVENING
-        )
-        
-        welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
-        
-        await safe_edit_message(
-            callback.message,
-            welcome_text,
-            reply_markup=get_main_keyboard()
         )
 
 # =============================================
