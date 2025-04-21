@@ -13,7 +13,7 @@ from src.config import (
 )
 from src.database import get_user, can_leave_review_today
 from src.keyboards import get_main_keyboard
-from src.messages import MAX_CHARS_PER_PAGE, MAX_ITEMS_PER_PAGE, QUESTION_FORMAT, REVIEW_FORMAT
+from src.messages import MAX_CHARS_PER_PAGE, MAX_ITEMS_PER_PAGE, QUESTION_FORMAT, REVIEW_FORMAT, REVIEW_LIMIT_TEXT
 
 
 async def delete_last_messages(chat_id: int, message_id: int, count: int = 5) -> None:
@@ -101,7 +101,7 @@ async def check_review_limit(
     if not await can_leave_review_today(user_id):
         await safe_edit_message(
             message,
-            "Вы уже оставили отзыв сегодня. Попробуйте завтра.",
+            REVIEW_LIMIT_TEXT,
             reply_markup=keyboard
         )
         return False

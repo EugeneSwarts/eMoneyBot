@@ -18,6 +18,7 @@ from pytz import timezone
 # =============================================
 # Локальные модули
 # =============================================
+from src.admin.main_admin import *
 from src.config import *
 from src.database import *
 from src.utils import *
@@ -82,26 +83,29 @@ async def cmd_start(message: types.Message):
         await add_user(message.from_user.id, message.from_user.username)
         logger.info(f"Новый пользователь: {message.from_user.id} (@{message.from_user.username})")
     
-    # Определяем текущее время суток для персонализированного приветствия
-    tyumen_tz = timezone('Asia/Yekaterinburg')
-    current_hour = datetime.now(tyumen_tz).hour
-    
-    # Выбираем подходящее приветствие в зависимости от времени суток
-    greeting = (
-        GREETING_NIGHT if 0 <= current_hour < 6 
-        else GREETING_MORNING if 6 <= current_hour < 12
-        else GREETING_DAY if 12 <= current_hour < 18
-        else GREETING_EVENING
-    )
-    
-    # Формируем текст приветственного сообщения
-    welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
-    
-    # Отправляем приветственное сообщение с клавиатурой
-    await message.answer(
-        welcome_text,
-        reply_markup=get_main_keyboard()
-    )
+    if user[2] == 1:
+        await show_admin_menu(message)
+    else:
+        # Определяем текущее время суток для персонализированного приветствия
+        tyumen_tz = timezone('Asia/Yekaterinburg')
+        current_hour = datetime.now(tyumen_tz).hour
+        
+        # Выбираем подходящее приветствие в зависимости от времени суток
+        greeting = (
+            GREETING_NIGHT if 0 <= current_hour < 6 
+            else GREETING_MORNING if 6 <= current_hour < 12
+            else GREETING_DAY if 12 <= current_hour < 18
+            else GREETING_EVENING
+        )
+        
+        # Формируем текст приветственного сообщения
+        welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
+        
+        # Отправляем приветственное сообщение с клавиатурой
+        await message.answer(
+            welcome_text,
+            reply_markup=get_main_keyboard()
+        )
 
 # =============================================
 # Обработчик нажатий на кнопки
