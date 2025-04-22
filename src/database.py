@@ -314,3 +314,41 @@ async def has_questions_with_responses(user_id: int) -> bool:
             count = await cursor.fetchone()
             return count[0] > 0
 
+async def get_all_reviews(filter_type: str = "all") -> list:
+    """
+    Получает все отзывы с возможностью фильтрации.
+    
+    Args:
+        filter_type (str): Тип фильтрации ('all' или 'without_answers')
+        
+    Returns:
+        list: Список отзывов
+    """
+    query = "SELECT * FROM reviews"
+    if filter_type == "without_answers":
+        query += " WHERE admin_response IS NULL"
+    query += " ORDER BY created_at DESC"
+    
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        async with db.execute(query) as cursor:
+            return await cursor.fetchall()
+
+async def get_all_questions(filter_type: str = "all") -> list:
+    """
+    Получает все вопросы с возможностью фильтрации.
+    
+    Args:
+        filter_type (str): Тип фильтрации ('all' или 'without_answers')
+        
+    Returns:
+        list: Список вопросов
+    """
+    query = "SELECT * FROM questions"
+    if filter_type == "without_answers":
+        query += " WHERE admin_response IS NULL"
+    query += " ORDER BY created_at DESC"
+    
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        async with db.execute(query) as cursor:
+            return await cursor.fetchall()
+

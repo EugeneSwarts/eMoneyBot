@@ -126,11 +126,67 @@ async def handle_back_to_main(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.from_user.id in user_ratings:
         del user_ratings[callback.from_user.id]
+
+    # Проверяем права администратора
+    if await check_admin_rights(callback.message):
+        return
     
     await handle_main_menu(callback, is_start=False)
 
+
 # =============================================
-# Обработчик нажатий на кнопки
+# Обработчик нажатий на кнопки администратора
+# =============================================
+@dp.callback_query(lambda c: c.data.startswith("admin_"))
+async def process_admin_callback(callback: types.CallbackQuery, state: FSMContext):
+    if callback.data == "admin_history_reviews":
+        await handle_admin_reviews(callback, state)
+    elif callback.data == "admin_history_questions":
+        await handle_admin_questions(callback, state)
+    elif callback.data == "admin_show_all_reviews":
+        await show_admin_reviews(callback, state, "all")
+    elif callback.data == "admin_show_all_reviews_without_answers":
+        await show_admin_reviews(callback, state, "without_answers")
+    elif callback.data == "admin_show_all_questions":
+        await show_admin_questions(callback, state, "all")
+    elif callback.data == "admin_show_all_questions_without_answers":
+        await show_admin_questions(callback, state, "without_answers")
+    elif callback.data.startswith("admin_sort_new_"):
+        parts = callback.data.split("_")
+        history_type = parts[3]
+        filter_type = parts[4]
+        await display_admin_history(callback, state, "new")
+    elif callback.data.startswith("admin_sort_old_"):
+        parts = callback.data.split("_")
+        history_type = parts[3]
+        filter_type = parts[4]
+        await display_admin_history(callback, state, "old")
+    elif callback.data.startswith("admin_page_"):
+        parts = callback.data.split("_")
+        page = int(parts[2])
+        history_type = parts[3]
+        filter_type = parts[4]
+        data = await state.get_data()
+        await state.update_data(current_page=page)
+        await show_admin_history_page(callback, state)
+    elif callback.data.startswith("admin_back_to_filter_"):
+        history_type = callback.data.split("_")[3]
+        if history_type == "reviews":
+            await handle_admin_reviews(callback, state)
+        else:
+            await handle_admin_questions(callback, state)
+    elif callback.data.startswith("admin_back_to_sort_"):
+        parts = callback.data.split("_")
+        history_type = parts[4]
+        filter_type = parts[5]
+        if history_type == "reviews":
+            await show_admin_reviews(callback, state, filter_type)
+        else:
+            await show_admin_questions(callback, state, filter_type)
+
+
+# =============================================
+# Обработчик нажатий на кнопки пользователя
 # =============================================
 @dp.callback_query()
 async def process_callback(callback: types.CallbackQuery, state: FSMContext):

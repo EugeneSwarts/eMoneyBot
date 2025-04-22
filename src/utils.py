@@ -2,7 +2,6 @@
 # Стандартные библиотеки Python
 # =============================================
 import logging
-from datetime import datetime
 from typing import Optional, List, Callable, Dict, Any, Union
 
 # =============================================
@@ -25,6 +24,7 @@ from src.config import (
 from src.database import get_user, can_leave_review_today
 from src.keyboards import get_main_keyboard
 from src.messages import MAX_CHARS_PER_PAGE, MAX_ITEMS_PER_PAGE, QUESTION_FORMAT, REVIEW_FORMAT, REVIEW_LIMIT_TEXT
+from src.formatting import format_datetime
 
 # =============================================
 # Управление сообщениями в чате
@@ -211,20 +211,6 @@ async def handle_text_message(
 # =============================================
 # Форматирование данных
 # =============================================
-def format_datetime(datetime_str: str) -> str:
-    """
-    Форматирует строку с датой и временем.
-    Преобразует ISO формат в читаемый формат даты и времени.
-    
-    Args:
-        datetime_str (str): Строка с датой и временем в формате ISO
-        
-    Returns:
-        str: Отформатированная дата и время в формате "дд.мм.гггг чч:мм"
-    """
-    return datetime.fromisoformat(datetime_str).strftime("%d.%m.%Y %H:%M")
-
-
 def format_review(review: tuple) -> str:
     """
     Форматирует отзыв для отображения.
