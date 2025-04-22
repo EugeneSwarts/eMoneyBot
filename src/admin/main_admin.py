@@ -1,8 +1,9 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from src.database import get_user, get_all_reviews, get_all_questions
+from src.database import get_user, get_all_reviews, get_all_questions, add_review_response, add_question_response
 from src.formatting import format_datetime
+from src.utils import delete_last_messages
 from .admin_keyboards import (
     get_admin_menu_keyboard, 
     get_admin_questions_keyboard, 
@@ -23,6 +24,7 @@ from .admin_messages import (
     ADMIN_HISTORY_STATUS_WITH_ANSWER,
     ADMIN_HISTORY_STATUS_WITHOUT_ANSWER
 )
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 class AdminHistoryStates(StatesGroup):
     """
@@ -32,10 +34,12 @@ class AdminHistoryStates(StatesGroup):
     - waiting_for_filter_type: Ожидание выбора типа фильтрации
     - waiting_for_sort_type: Ожидание выбора типа сортировки
     - viewing_history: Просмотр истории с пагинацией
+    - waiting_for_reply: Ожидание ответа администратора
     """
     waiting_for_filter_type = State()
     waiting_for_sort_type = State()
     viewing_history = State()
+    waiting_for_reply = State()
 
 async def show_admin_menu(message, user_id: int, is_bot: bool):
     """
@@ -274,5 +278,90 @@ async def show_admin_history_page(callback: types.CallbackQuery, state: FSMConte
     )
     
     await callback.message.edit_text(text, reply_markup=keyboard)
+
+async def handle_admin_reply(callback: types.CallbackQuery, state: FSMContext):
+    """
+    Обрабатывает нажатие на кнопку "Ответить" для отзыва или вопроса.
+    
+    Args:
+        callback (types.CallbackQuery): Объект callback запроса
+        state (FSMContext): Контекст состояния FSM
+    """
+    # Получаем ID элемента и тип истории из callback_data
+    parts = callback.data.split("_")
+    item_id = int(parts[2])
+    history_type = parts[3]
+    
+    # Сохраняем данные в состоянии
+    await state.update_data(
+        reply_item_id=item_id,
+        reply_history_type=history_type
+    )
+    
+    # Устанавливаем состояние ожидания ответа
+    await state.set_state(AdminHistoryStates.waiting_for_reply)
+    
+    # Отправляем сообщение с просьбой ввести ответ
+    await callback.message.edit_text(
+        "✍️ Введите ваш ответ:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="❌ Отмена", callback_data="admin_cancel_reply")
+        ]])
+    )
+
+async def handle_admin_reply_text(message: types.Message, state: FSMContext):
+    """
+    Обрабатывает текст ответа администратора и сохраняет его в базу данных.
+    
+    Args:
+        message (types.Message): Объект сообщения с ответом
+        state (FSMContext): Контекст состояния FSM
+    """
+    # Получаем сохраненные данные из состояния
+    data = await state.get_data()
+    item_id = data.get("reply_item_id")
+    history_type = data.get("reply_history_type")
+    
+    # Сохраняем ответ в базу данных
+    if history_type == "reviews":
+        await add_review_response(item_id, message.text)
+    else:
+        await add_question_response(item_id, message.text)
+    
+    # Возвращаемся к просмотру истории
+    await state.set_state(AdminHistoryStates.viewing_history)
+    
+    await delete_last_messages(message.chat.id, message.message_id)
+
+    # Отправляем сообщение об успешном сохранении
+    await message.answer(
+        "✅ Ответ успешно сохранен!",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"back_to_main")
+        ]])
+    )
+
+async def handle_admin_cancel_reply(callback: types.CallbackQuery, state: FSMContext):
+    """
+    Обрабатывает отмену ответа администратора.
+    
+    Args:
+        callback (types.CallbackQuery): Объект callback запроса
+        state (FSMContext): Контекст состояния FSM
+    """
+    # Получаем тип истории из состояния
+    data = await state.get_data()
+    history_type = data.get("reply_history_type")
+    
+    # Возвращаемся к просмотру истории
+    await state.set_state(AdminHistoryStates.viewing_history)
+    
+    # Отправляем сообщение об отмене
+    await callback.message.edit_text(
+        "❌ Ответ отменен.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"back_to_main")
+        ]])
+    )
 
 

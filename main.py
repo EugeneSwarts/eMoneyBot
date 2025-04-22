@@ -9,7 +9,7 @@ from datetime import datetime
 # Сторонние библиотеки
 # =============================================
 from aiogram import types
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -183,6 +183,16 @@ async def process_admin_callback(callback: types.CallbackQuery, state: FSMContex
             await show_admin_reviews(callback, state, filter_type)
         else:
             await show_admin_questions(callback, state, filter_type)
+    elif callback.data.startswith("admin_reply_"):
+        await handle_admin_reply(callback, state)
+    elif callback.data == "admin_cancel_reply":
+        await handle_admin_cancel_reply(callback, state)
+    elif callback.data.startswith("admin_back_to_history_"):
+        history_type = callback.data.split("_")[3]
+        if history_type == "reviews":
+            await show_admin_reviews(callback, state, "all")
+        else:
+            await show_admin_questions(callback, state, "all")
 
 
 # =============================================
@@ -444,6 +454,10 @@ async def process_question_text(message: types.Message, state: FSMContext):
         success_text=SUCCESS_QUESTION_TEXT,
         error_text=ERROR_TEXT
     )
+
+@dp.message(StateFilter(AdminHistoryStates.waiting_for_reply))
+async def process_admin_reply(message: types.Message, state: FSMContext):
+    await handle_admin_reply_text(message, state)
 
 # =============================================
 # Основная функция запуска бота
