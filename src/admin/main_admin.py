@@ -3,6 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from src.database import get_questions_by_id, get_user, get_all_reviews, get_all_questions, add_review_response, add_question_response, get_review_by_id
 from src.formatting import format_datetime
+from src.config import bot
+from src.messages import QUESTION_FORMAT, REVIEW_FORMAT
 from src.utils import delete_last_messages
 from .admin_utils import show_admin_menu
 from .admin_keyboards import (
@@ -342,8 +344,52 @@ async def handle_admin_reply_text(message: types.Message, state: FSMContext):
     # Сохраняем ответ в базу данных
     if history_type == "reviews":
         await add_review_response(item_id, message.text)
+        # Получаем обновленный отзыв
+        review = await get_review_by_id(item_id)
+        if review:
+            status = ADMIN_HISTORY_STATUS_WITH_ANSWER
+            review_text = f"\n\n💭 Отзыв: {review[4]}" if review[4] else ""
+            admin_response = f"\n\n💬 Ответ администратора: {review[5]}" if review[5] else ""
+            
+            # Формируем текст уведомления
+            notification_text = (
+                f"✨ На ваш отзыв №{review[0]} получен ответ!\n"
+                f"─────────────────────\n"
+                f"{REVIEW_FORMAT.format(
+                    date=format_datetime(review[6]),
+                    rating="⭐" * review[3],
+                    review_text=review_text,
+                    admin_response=admin_response
+                )}"
+            )
+            # Отправляем уведомление пользователю
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="✅ OK", callback_data="delete_notification")
+            ]])
+            await bot.send_message(review[1], notification_text, reply_markup=keyboard)
     else:
         await add_question_response(item_id, message.text)
+        # Получаем обновленный вопрос
+        question = await get_questions_by_id(item_id)
+        if question:
+            status = ADMIN_HISTORY_STATUS_WITH_ANSWER
+            admin_response = f"\n\n💬 Ответ администратора: {question[4]}" if question[4] else ""
+            
+            # Формируем текст уведомления
+            notification_text = (
+                f"🤔 На ваш вопрос №{question[0]} получен ответ!\n"
+                f"─────────────────────\n"
+                f"{QUESTION_FORMAT.format(
+                    date=format_datetime(question[5]),
+                    question_text=question[3],
+                    admin_response=admin_response
+                )}"
+            )
+            # Отправляем уведомление пользователю
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="✅ OK", callback_data="delete_notification")
+            ]])
+            await bot.send_message(question[1], notification_text, reply_markup=keyboard)
     
     # Возвращаемся к просмотру истории
     await state.set_state(AdminHistoryStates.viewing_history)
