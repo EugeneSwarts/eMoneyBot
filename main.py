@@ -61,55 +61,6 @@ class HistoryStates(StatesGroup):
     waiting_for_filter_type = State()
     waiting_for_sort_type = State()
 
-# =============================================
-# Обработчик главного меню
-# =============================================
-async def handle_main_menu(message: Union[types.Message, types.CallbackQuery], is_start: bool = False) -> None:
-    """
-    Общий обработчик для главного меню.
-    Используется как для команды /start, так и для кнопки "Назад".
-    
-    Args:
-        message (Union[types.Message, types.CallbackQuery]): Объект сообщения или callback
-        is_start (bool): True если это команда /start, False если возврат в меню
-    """
-    # Очищаем последние сообщения только для команды start
-    if is_start:
-        await delete_last_messages(message.chat.id, message.message_id)
-        
-        # Проверяем существование пользователя и регистрируем если его нет
-        user = await get_user(message.from_user.id)
-        if not user:
-            await add_user(message.from_user.id, message.from_user.username)
-            logger.info(f"Новый пользователь: {message.from_user.id} (@{message.from_user.username})")
-        
-        # Проверяем права администратора
-        if await check_admin_rights(message):
-            return
-
-    # Определяем текущее время суток для персонализированного приветствия
-    tyumen_tz = timezone('Asia/Yekaterinburg')
-    current_hour = datetime.now(tyumen_tz).hour
-    
-    # Выбираем подходящее приветствие в зависимости от времени суток
-    greeting = (
-        GREETING_NIGHT if 0 <= current_hour < 6 
-        else GREETING_MORNING if 6 <= current_hour < 12
-        else GREETING_DAY if 12 <= current_hour < 18
-        else GREETING_EVENING
-    )
-    
-    # Формируем текст приветственного сообщения
-    welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
-    
-    # Отправляем или редактируем сообщение в зависимости от типа вызова
-    if is_start:
-        await message.answer(welcome_text, reply_markup=get_main_keyboard())
-    else:
-        # Если это CallbackQuery, используем его message атрибут
-        message_to_edit = message.message if isinstance(message, types.CallbackQuery) else message
-        await safe_edit_message(message_to_edit, welcome_text, reply_markup=get_main_keyboard())
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """
@@ -133,13 +84,20 @@ async def handle_back_to_main(callback: types.CallbackQuery, state: FSMContext):
     
     await handle_main_menu(callback, is_start=False)
 
-
+@dp.callback_query(lambda c: c.data == "delete_notification")
+async def delete_notification(callback: types.CallbackQuery, state: FSMContext):
+    # Удаляем уведомление при нажатии кнопки OK
+    await callback.message.delete()
+    
 # =============================================
 # Обработчик нажатий на кнопки администратора
 # =============================================
 @dp.callback_query(lambda c: c.data.startswith("admin_"))
 async def process_admin_callback(callback: types.CallbackQuery, state: FSMContext):
-    if callback.data == "admin_history_reviews":
+    
+    if await check_user_rights(callback.message):
+        return
+    elif callback.data == "admin_history_reviews":
         await handle_admin_reviews(callback, state)
     elif callback.data == "admin_history_questions":
         await handle_admin_questions(callback, state)
@@ -265,13 +223,44 @@ async def process_callback(callback: types.CallbackQuery, state: FSMContext):
         # Пользователь решил не писать отзыв
         rating = user_ratings.get(user_id)
         if rating:
-            await create_review(user_id, username, rating)
+            review_id = await create_review(user_id, username, rating)
             await state.clear()
             await safe_edit_message(
                 callback.message,
                 SUCCESS_RATING_TEXT,
                 reply_markup=get_main_keyboard()
             )
+            
+            # Получаем данные отзыва для уведомления
+            review = await get_review_by_id(review_id)
+            status = ADMIN_HISTORY_STATUS_WITHOUT_ANSWER
+            review_text = f"\n\n💭 Отзыв: {review[4]}" if review[4] else ""
+            admin_response = ""
+            
+            # Формируем текст уведомления
+            notification_text = ADMIN_HISTORY_REVIEW_TEMPLATE.format(
+                review_id=review[0],
+                username=review[2],
+                status=status,
+                date=format_datetime(review[6]),
+                rating="⭐" * review[3],
+                review_text=review_text,
+                admin_response=admin_response
+            )
+            
+            # Получаем всех администраторов и отправляем им уведомления
+            async with aiosqlite.connect(DATABASE_PATH) as db:
+                async with db.execute('SELECT user_id FROM users WHERE admin_level > 0') as cursor:
+                    admins = await cursor.fetchall()
+                    for admin in admins:
+                        try:
+                            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                                [InlineKeyboardButton(text="✅ OK", callback_data="delete_notification")]
+                            ])
+                            await bot.send_message(admin[0], notification_text, reply_markup=keyboard)
+                        except:
+                            continue
+            
             del user_ratings[user_id]
     elif callback.data == "ask_question":
         # Пользователь хочет задать вопрос

@@ -62,24 +62,24 @@ ADMIN_SORT_TEXT = """
 """
 
 # Сообщения для отображения истории
-ADMIN_HISTORY_REVIEW_TEMPLATE = """📝 Отзыв №{review_id} от @{username}
+ADMIN_HISTORY_REVIEW_TEMPLATE = (
+    "📝 Отзыв №{review_id} от @{username}"
+    "\n🔄 Статус: {status}"
+    "\n─────────────────────"
+    "\n📅 {date}"
+    "\n\n🏅 Оценка: {rating}"
+    "{review_text}"
+    "{admin_response}"
+)
 
-🔄 Статус: {status}
-─────────────────────
-
-📅 Дата: {date}
-⭐ Рейтинг: {rating}
-{review_text}
-{admin_response}"""
-
-ADMIN_HISTORY_QUESTION_TEMPLATE = """❓ Вопрос №{question_id} от @{username}
-
-🔄 Статус: {status}
-─────────────────────
-
-📅 Дата: {date}
-❓ Вопрос: {question_text}
-{admin_response}"""
+ADMIN_HISTORY_QUESTION_TEMPLATE = (
+    "❓ Вопрос №{question_id} от @{username}"
+    "\n🔄 Статус: {status}"
+    "\n─────────────────────"
+    "\n📅 {date}"
+    "\n\n❓ Вопрос: {question_text}"
+    "{admin_response}" 
+)
 
 ADMIN_HISTORY_NO_REVIEWS = "Нет отзывов для отображения."
 ADMIN_HISTORY_NO_QUESTIONS = "Нет вопросов для отображения."

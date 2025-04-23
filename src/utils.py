@@ -1,6 +1,8 @@
 # =============================================
 # Стандартные библиотеки Python
 # =============================================
+from asyncio.log import logger
+from datetime import datetime
 import logging
 from typing import Optional, List, Callable, Dict, Any, Union
 
@@ -8,23 +10,78 @@ from typing import Optional, List, Callable, Dict, Any, Union
 # Сторонние библиотеки
 # =============================================
 from aiogram import types
-from aiogram.types import InlineKeyboardMarkup, Message
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
+import aiosqlite
+from pytz import timezone
 
 # =============================================
 # Внутренние модули
 # =============================================
-from src.admin.main_admin import show_admin_menu
+from src.admin.admin_messages import ADMIN_HISTORY_QUESTION_TEMPLATE, ADMIN_HISTORY_REVIEW_TEMPLATE, ADMIN_HISTORY_STATUS_WITHOUT_ANSWER
+from src.admin.admin_utils import show_admin_menu
 from src.config import (
+    DATABASE_PATH,
     LOG_MESSAGE_DELETE_ERROR,
     LOG_MESSAGE_EDIT_ERROR,
     LOG_DB_ERROR,
     bot
 )
-from src.database import get_user, can_leave_review_today
+from src.database import add_user, get_questions_by_id, get_review_by_id, get_user, can_leave_review_today
 from src.keyboards import get_main_keyboard
-from src.messages import MAX_CHARS_PER_PAGE, MAX_ITEMS_PER_PAGE, QUESTION_FORMAT, REVIEW_FORMAT, REVIEW_LIMIT_TEXT
+from src.messages import *
 from src.formatting import format_datetime
+
+
+# =============================================
+# Обработчик главного меню
+# =============================================
+async def handle_main_menu(message: Union[types.Message, types.CallbackQuery], is_start: bool = False) -> None:
+    """
+    Общий обработчик для главного меню.
+    Используется как для команды /start, так и для кнопки "Назад".
+    
+    Args:
+        message (Union[types.Message, types.CallbackQuery]): Объект сообщения или callback
+        is_start (bool): True если это команда /start, False если возврат в меню
+    """
+    # Очищаем последние сообщения только для команды start
+    if is_start:
+        await delete_last_messages(message.chat.id, message.message_id)
+        
+        # Проверяем существование пользователя и регистрируем если его нет
+        user = await get_user(message.from_user.id)
+        if not user:
+            await add_user(message.from_user.id, message.from_user.username)
+            logger.info(f"Новый пользователь: {message.from_user.id} (@{message.from_user.username})")
+        
+        # Проверяем права администратора
+        if await check_admin_rights(message):
+            return
+
+    # Определяем текущее время суток для персонализированного приветствия
+    tyumen_tz = timezone('Asia/Yekaterinburg')
+    current_hour = datetime.now(tyumen_tz).hour
+    
+    # Выбираем подходящее приветствие в зависимости от времени суток
+    greeting = (
+        GREETING_NIGHT if 0 <= current_hour < 6 
+        else GREETING_MORNING if 6 <= current_hour < 12
+        else GREETING_DAY if 12 <= current_hour < 18
+        else GREETING_EVENING
+    )
+    
+    # Формируем текст приветственного сообщения
+    welcome_text = f"{greeting}\n\n{MAIN_MENU_TEXT}"
+    
+    # Отправляем или редактируем сообщение в зависимости от типа вызова
+    if is_start:
+        await message.answer(welcome_text, reply_markup=get_main_keyboard())
+    else:
+        # Если это CallbackQuery, используем его message атрибут
+        message_to_edit = message.message if isinstance(message, types.CallbackQuery) else message
+        await safe_edit_message(message_to_edit, welcome_text, reply_markup=get_main_keyboard())
 
 # =============================================
 # Управление сообщениями в чате
@@ -142,6 +199,26 @@ async def check_admin_rights(message: Union[Message, types.CallbackQuery]) -> bo
         return True
     return False
 
+
+async def check_user_rights(message: Union[Message, types.CallbackQuery]) -> bool:
+    """
+    Проверяет права пользователя и выполняет перенаправление на меню при необходимости.
+    
+    Args:
+        message (Union[Message, types.CallbackQuery]): Объект сообщения или callback query от пользователя
+        
+    Returns:
+        bool: True если пользователь администратор, False если нет
+    """
+    # Определяем ID пользователя в зависимости от типа входящего сообщения
+    user_id = message.chat.id if message.from_user.is_bot else message.from_user.id
+    user = await get_user(user_id)
+    
+    if user and user[2] < 1:  # user[2] - это поле admin_rights в базе данных
+        await handle_main_menu(message, is_start=False)
+        return True
+    return False
+
 # =============================================
 # Обработка пользовательского ввода
 # =============================================
@@ -189,15 +266,66 @@ async def handle_text_message(
                 await message.answer(error_text)
                 await state.clear()
                 return
-            await create_func(user_id, username, rating, message.text)
+            item_id = await create_func(user_id, username, rating, message.text)
         else:
-            await create_func(user_id, username, message.text)
+            item_id = await create_func(user_id, username, message.text)
             
         # Отправляем сообщение об успехе
         await message.answer(
             success_text,
             reply_markup=get_main_keyboard()
         )
+        
+        # Определяем тип записи (отзыв или вопрос)
+        history_type = "reviews" if user_ratings else "questions"
+        
+        # Получаем данные записи для уведомления
+        if history_type == "reviews":
+            item = await get_review_by_id(item_id)
+            status = ADMIN_HISTORY_STATUS_WITHOUT_ANSWER
+            item_text = f"\n\n💭 Отзыв: {item[4]}" if item[4] else ""
+            
+            # Формируем текст уведомления
+            notification_text = ADMIN_HISTORY_REVIEW_TEMPLATE.format(
+                review_id=item[0],
+                username=item[2],
+                status=status,
+                date=format_datetime(item[6]),
+                rating="⭐" * item[3],
+                review_text=item_text,
+                admin_response=""
+            )
+        else:
+            item = await get_questions_by_id(item_id)
+            status = ADMIN_HISTORY_STATUS_WITHOUT_ANSWER
+            
+            # Формируем текст уведомления
+            notification_text = ADMIN_HISTORY_QUESTION_TEMPLATE.format(
+                question_id=item[0],
+                username=item[2],
+                status=status,
+                date=format_datetime(item[5]),
+                question_text=f"{item[3]}",
+                admin_response=""
+            )
+        
+        # Получаем всех администраторов и отправляем им уведомления
+        async with aiosqlite.connect(DATABASE_PATH) as db:
+            async with db.execute('SELECT user_id FROM users WHERE admin_level > 0') as cursor:
+                admins = await cursor.fetchall()
+                for admin in admins:
+                    try:
+                        # Создаем кнопку для удаления уведомления
+                        keyboard = InlineKeyboardMarkup(
+                            inline_keyboard=[
+                                [InlineKeyboardButton(text="✅ OK", callback_data="delete_notification")]
+                            ]
+                        )
+                        await bot.send_message(admin[0], notification_text, reply_markup=keyboard)
+                    except Exception as e:
+                        logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+                        continue
+                        
     except Exception as e:
         # Логируем ошибку и отправляем сообщение пользователю
         logging.error(LOG_DB_ERROR.format(error=e))

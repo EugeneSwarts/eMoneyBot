@@ -140,7 +140,7 @@ REVIEW_FORMAT = (
 
 QUESTION_FORMAT = (
     "📅 {date}"
-    "\n\n❓ {question_text}"
+    "\n\n❓Вопрос: {question_text}"
     "{admin_response}" 
 )
 

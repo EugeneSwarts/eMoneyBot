@@ -136,14 +136,20 @@ async def create_review(user_id: int, username: str, rating: int, review_text: s
         username (str): Имя пользователя
         rating (int): Оценка (1-5)
         review_text (str, optional): Текст отзыва
+        
+    Returns:
+        int: ID созданного отзыва
     """
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
+        cursor = await db.execute(
             '''INSERT INTO reviews (user_id, username, rating, review_text, created_at)
-               VALUES (?, ?, ?, ?, ?)''',
+               VALUES (?, ?, ?, ?, ?)
+               RETURNING review_id''',
             (user_id, username, rating, review_text, datetime.now())
         )
+        review_id = (await cursor.fetchone())[0]
         await db.commit()
+        return review_id
 
 async def add_review_response(review_id: int, response: str):
     """
@@ -228,14 +234,20 @@ async def create_question(user_id: int, username: str, question_text: str):
         user_id (int): ID пользователя
         username (str): Имя пользователя
         question_text (str): Текст вопроса
+        
+    Returns:
+        int: ID созданного вопроса
     """
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
+        cursor = await db.execute(
             '''INSERT INTO questions (user_id, username, question_text, created_at)
-               VALUES (?, ?, ?, ?)''',
+               VALUES (?, ?, ?, ?)
+               RETURNING question_id''',
             (user_id, username, question_text, datetime.now())
         )
+        question_id = (await cursor.fetchone())[0]
         await db.commit()
+        return question_id
 
 async def add_question_response(question_id: int, response: str):
     """
@@ -352,3 +364,36 @@ async def get_all_questions(filter_type: str = "all") -> list:
         async with db.execute(query) as cursor:
             return await cursor.fetchall()
 
+async def get_review_by_id(review_id: int):
+    """
+    Получает отзыв по его ID.
+    
+    Args:
+        review_id (int): ID отзыва
+        
+    Returns:
+        tuple: Данные отзыва или None, если отзыв не найден
+    """
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        async with db.execute(
+            'SELECT * FROM reviews WHERE review_id = ?',
+            (review_id,)
+        ) as cursor:
+            return await cursor.fetchone()
+
+async def get_questions_by_id(question_id: int):
+    """
+    Получает вопрос по его ID.
+    
+    Args:
+        question_id (int): ID вопроса
+        
+    Returns:
+        tuple: Данные вопроса или None, если вопрос не найден
+    """
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        async with db.execute(
+            'SELECT * FROM questions WHERE question_id = ?',
+            (question_id,)
+        ) as cursor:
+            return await cursor.fetchone()
