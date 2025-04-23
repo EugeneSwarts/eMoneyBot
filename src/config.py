@@ -21,7 +21,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Путь к файлу базы данных SQLite
 # База данных будет создана в директории data
-DATABASE_PATH = os.path.join("data", "bot_database.db")
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/bot_database.db')
+
+# Super Admin ID
+SUPER_ADMIN_ID = int(os.getenv('SUPER_ADMIN_ID', 0))
 
 # =============================================
 # Настройки системы логирования

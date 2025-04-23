@@ -1,5 +1,5 @@
 import aiosqlite
-from src.config import DATABASE_PATH
+from src.config import DATABASE_PATH, SUPER_ADMIN_ID
 from datetime import datetime
 
 # =============================================
@@ -54,6 +54,42 @@ async def init_db():
             )
         ''')
         await db.commit()
+        
+        # Проверяем и обновляем права супер-администратора
+        await check_super_admin()
+
+async def check_super_admin():
+    """
+    Проверяет и обновляет права супер-администратора.
+    Если пользователь с ID из SUPER_ADMIN_ID существует, но его уровень админки не 4,
+    то устанавливает уровень 4.
+    """
+    if not SUPER_ADMIN_ID:
+        return
+        
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        # Проверяем существование пользователя
+        async with db.execute(
+            'SELECT admin_level FROM users WHERE user_id = ?',
+            (SUPER_ADMIN_ID,)
+        ) as cursor:
+            user = await cursor.fetchone()
+            
+            if user:
+                # Если пользователь существует, но уровень не 4, обновляем
+                if user[0] != 4:
+                    await db.execute(
+                        'UPDATE users SET admin_level = 4 WHERE user_id = ?',
+                        (SUPER_ADMIN_ID,)
+                    )
+                    await db.commit()
+            else:
+                # Если пользователь не существует, создаем с уровнем 4
+                await db.execute(
+                    'INSERT INTO users (user_id, admin_level) VALUES (?, 4)',
+                    (SUPER_ADMIN_ID,)
+                )
+                await db.commit()
 
 # =============================================
 # Операции с пользователями

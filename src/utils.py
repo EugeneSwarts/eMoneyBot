@@ -28,7 +28,7 @@ from src.config import (
     LOG_DB_ERROR,
     bot
 )
-from src.database import add_user, get_questions_by_id, get_review_by_id, get_user, can_leave_review_today
+from src.database import add_user, check_super_admin, get_questions_by_id, get_review_by_id, get_user, can_leave_review_today
 from src.keyboards import get_main_keyboard
 from src.messages import *
 from src.formatting import format_datetime
@@ -193,6 +193,9 @@ async def check_admin_rights(message: Union[Message, types.CallbackQuery]) -> bo
     # Определяем ID пользователя в зависимости от типа входящего сообщения
     user_id = message.chat.id if message.from_user.is_bot else message.from_user.id
     user = await get_user(user_id)
+    
+    # Проверяем и обновляем права супер-администратора
+    await check_super_admin()
     
     if user and user[2] > 0:  # user[2] - это поле admin_rights в базе данных
         await show_admin_menu(message, user_id, message.from_user.is_bot)
