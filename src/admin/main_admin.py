@@ -350,17 +350,17 @@ async def handle_admin_reply_text(message: types.Message, state: FSMContext):
             status = ADMIN_HISTORY_STATUS_WITH_ANSWER
             review_text = f"\n\n💭 Отзыв: {review[4]}" if review[4] else ""
             admin_response = f"\n\n💬 Ответ администратора: {review[5]}" if review[5] else ""
-            
+            formated_notification = REVIEW_FORMAT.format(
+                                        date=format_datetime(review[6]),
+                                        rating="⭐" * review[3],
+                                        review_text=review_text,
+                                        admin_response=admin_response
+                                    )
             # Формируем текст уведомления
             notification_text = (
                 f"✨ На ваш отзыв №{review[0]} получен ответ!\n"
                 f"─────────────────────\n"
-                f"{REVIEW_FORMAT.format(
-                    date=format_datetime(review[6]),
-                    rating="⭐" * review[3],
-                    review_text=review_text,
-                    admin_response=admin_response
-                )}"
+                f"{formated_notification}"
             )
             # Отправляем уведомление пользователю
             keyboard = InlineKeyboardMarkup(inline_keyboard=[[
@@ -374,16 +374,16 @@ async def handle_admin_reply_text(message: types.Message, state: FSMContext):
         if question:
             status = ADMIN_HISTORY_STATUS_WITH_ANSWER
             admin_response = f"\n\n💬 Ответ администратора: {question[4]}" if question[4] else ""
-            
+            formated_notification = QUESTION_FORMAT.format(
+                                        date=format_datetime(question[5]),
+                                        question_text=question[3],
+                                        admin_response=admin_response
+                                    )
             # Формируем текст уведомления
             notification_text = (
                 f"🤔 На ваш вопрос №{question[0]} получен ответ!\n"
                 f"─────────────────────\n"
-                f"{QUESTION_FORMAT.format(
-                    date=format_datetime(question[5]),
-                    question_text=question[3],
-                    admin_response=admin_response
-                )}"
+                f"{formated_notification}"
             )
             # Отправляем уведомление пользователю
             keyboard = InlineKeyboardMarkup(inline_keyboard=[[
