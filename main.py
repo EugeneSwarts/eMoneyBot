@@ -18,6 +18,7 @@ from pytz import timezone
 # =============================================
 # Локальные модули
 # =============================================
+from src.admin.admin_utils import export_questions_excel, export_reviews_excel
 from src.admin.main_admin import *
 from src.config import *
 from src.database import *
@@ -101,6 +102,10 @@ async def process_admin_callback(callback: types.CallbackQuery, state: FSMContex
         await handle_admin_reviews(callback, state)
     elif callback.data == "admin_history_questions":
         await handle_admin_questions(callback, state)
+    elif callback.data == "admin_export_reviews_excel":
+        await export_reviews_excel(callback)
+    elif callback.data == "admin_export_questions_excel":
+        await export_questions_excel(callback)
     elif callback.data == "admin_show_all_reviews":
         await show_admin_reviews(callback, state, "all")
     elif callback.data == "admin_show_all_reviews_without_answers":

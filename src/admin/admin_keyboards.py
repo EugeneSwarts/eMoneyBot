@@ -56,6 +56,7 @@ def get_admin_reviews_keyboard() -> InlineKeyboardMarkup:
     keyboard_buttons = [
         [InlineKeyboardButton(text=BUTTON_SHOW_ALL, callback_data="admin_show_all_reviews")],
         [InlineKeyboardButton(text=BUTTON_WITHOUT_RESPONSES, callback_data="admin_show_all_reviews_without_answers")],
+        [InlineKeyboardButton(text="📊 Выгрузить все отзывы в Excel", callback_data="admin_export_reviews_excel")],
         [InlineKeyboardButton(text=BUTTON_BACK, callback_data="back_to_main")]
     ]
 
@@ -69,6 +70,7 @@ def get_admin_questions_keyboard() -> InlineKeyboardMarkup:
     keyboard_buttons = [
         [InlineKeyboardButton(text=BUTTON_SHOW_ALL, callback_data="admin_show_all_questions")],
         [InlineKeyboardButton(text=BUTTON_WITHOUT_RESPONSES, callback_data="admin_show_all_questions_without_answers")],
+        [InlineKeyboardButton(text="📊 Выгрузить все вопросы в Excel", callback_data="admin_export_questions_excel")],
         [InlineKeyboardButton(text=BUTTON_BACK, callback_data="back_to_main")]
     ]
 

@@ -40,3 +40,6 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Exports
+exports/
